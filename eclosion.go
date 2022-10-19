@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
+	"github.com/rohanshukla94/eclosion/render"
 )
 
 const version = "1.0.0"
@@ -21,6 +22,7 @@ type Eclosion struct {
 	InfoLog                    *log.Logger
 	Config                     InternalConfig
 	Routes                     *chi.Mux
+	Render                     *render.Render
 }
 
 type InternalConfig struct {
@@ -65,6 +67,7 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 		TemplateRenderer: os.Getenv("RENDERER"),
 	}
 	ecl.Routes = ecl.routes().(*chi.Mux)
+	ecl.createRenderer()
 	return nil
 }
 
@@ -110,15 +113,25 @@ func (ecl *Eclosion) ListenAndServe() {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")),
 		ErrorLog:     ecl.ErrorLog,
-		Handler:      ecl.routes(),
+		Handler:      ecl.Routes,
 		IdleTimeout:  30 * time.Second,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 600 * time.Second,
 	}
 
-	ecl.InfoLog.Println("Listening on port", os.Getenv("PORT"))
+	ecl.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
 
 	err := srv.ListenAndServe()
 
 	ecl.ErrorLog.Fatal(err)
+}
+
+func (ecl *Eclosion) createRenderer() {
+	myRender := render.Render{
+		Renderer: ecl.Config.TemplateRenderer,
+		RootPath: ecl.RootPath,
+		Port:     ecl.Config.Port,
+	}
+
+	ecl.Render = &myRender
 }
