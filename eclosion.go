@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CloudyKit/jet/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"github.com/rohanshukla94/eclosion/render"
@@ -23,6 +24,7 @@ type Eclosion struct {
 	Config                     InternalConfig
 	Routes                     *chi.Mux
 	Render                     *render.Render
+	JetViews                   *jet.Set
 }
 
 type InternalConfig struct {
@@ -67,6 +69,14 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 		TemplateRenderer: os.Getenv("RENDERER"),
 	}
 	ecl.Routes = ecl.routes().(*chi.Mux)
+
+	var views = jet.NewSet(
+		jet.NewOSFileSystemLoader(fmt.Sprintf("%s/views", rootPath)),
+		jet.InDevelopmentMode(),
+	)
+
+	ecl.JetViews = views
+
 	ecl.createRenderer()
 	return nil
 }
@@ -100,11 +110,10 @@ func (ecl *Eclosion) checkDotEnv(path string) error {
 func (ecl *Eclosion) startLogging() (*log.Logger, *log.Logger) {
 	var infoLog *log.Logger
 	var errorLog *log.Logger
-	log.SetPrefix("Eclosion: ")
 
 	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 
-	errorLog = log.New(os.Stdout, "Error\t", log.Ldate|log.Ltime|log.Lshortfile)
+	errorLog = log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	return infoLog, errorLog
 }
@@ -131,6 +140,7 @@ func (ecl *Eclosion) createRenderer() {
 		Renderer: ecl.Config.TemplateRenderer,
 		RootPath: ecl.RootPath,
 		Port:     ecl.Config.Port,
+		JetViews: ecl.JetViews,
 	}
 
 	ecl.Render = &myRender

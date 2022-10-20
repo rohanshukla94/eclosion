@@ -3,8 +3,11 @@ package render
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
+
+	"github.com/CloudyKit/jet/v6"
 )
 
 type Render struct {
@@ -13,6 +16,7 @@ type Render struct {
 	Secure     bool
 	Port       string
 	ServerName string
+	JetViews   *jet.Set
 }
 
 type TemplateData struct {
@@ -33,7 +37,7 @@ func (e *Render) Page(w http.ResponseWriter, r *http.Request, view string, varia
 	case "go":
 		return e.GoPage(w, r, view, data)
 	case "jet":
-		fmt.Println("Jet engine not yet impple")
+		return e.JetPage(w, r, view, variables, data)
 	}
 	return nil
 }
@@ -54,5 +58,36 @@ func (c *Render) GoPage(w http.ResponseWriter, r *http.Request, view string, dat
 		return err
 	}
 
+	return nil
+}
+
+func (c *Render) JetPage(w http.ResponseWriter, r *http.Request, templateName string, variables, data interface{}) error {
+
+	var vars jet.VarMap
+
+	if variables == nil {
+		vars = make(jet.VarMap)
+	} else {
+		vars = variables.(jet.VarMap)
+	}
+
+	td := &TemplateData{}
+
+	if data != nil {
+		td = data.(*TemplateData)
+	}
+
+	tmpl, err := c.JetViews.GetTemplate(fmt.Sprintf("%s.jet", templateName))
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = tmpl.Execute(w, vars, td)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 	return nil
 }
