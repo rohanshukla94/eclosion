@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/CloudyKit/jet/v6"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"github.com/rohanshukla94/eclosion/render"
+	"github.com/rohanshukla94/eclosion/session"
 )
 
 const version = "1.0.0"
@@ -21,15 +23,18 @@ type Eclosion struct {
 	Debug                      bool
 	ErrorLog                   *log.Logger
 	InfoLog                    *log.Logger
-	Config                     InternalConfig
+	Config                     internalConfig
 	Routes                     *chi.Mux
 	Render                     *render.Render
 	JetViews                   *jet.Set
+	Session                    *scs.SessionManager
 }
 
-type InternalConfig struct {
+type internalConfig struct {
 	Port             string
 	TemplateRenderer string
+	Cookie           CookieConfig
+	SessionType      string
 }
 
 func (ecl *Eclosion) Hatch(rootPath string) error {
@@ -64,10 +69,32 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 	ecl.Debug, _ = strconv.ParseBool(os.Getenv("DEBUG"))
 	ecl.Version = version
 	ecl.RootPath = rootPath
-	ecl.Config = InternalConfig{
+
+	ecl.Config = internalConfig{
 		Port:             os.Getenv("PORT"),
 		TemplateRenderer: os.Getenv("RENDERER"),
+		Cookie: CookieConfig{
+			Name:     os.Getenv("COOKIE_NAME"),
+			Lifetime: os.Getenv("COOKIE_LIFETIME"),
+			Persist:  os.Getenv("COOKIE_PERSIST"),
+			Secure:   os.Getenv("COOKIE_SECURE"),
+			Domain:   os.Getenv("COOKIE_DOMAINs"),
+		},
+		SessionType: os.Getenv("SESSION_TYPE"),
 	}
+
+	//create session
+
+	sess := session.Session{
+		CookieLifetime: ecl.Config.Cookie.Lifetime,
+		CookiePersist:  ecl.Config.Cookie.Persist,
+		CookieName:     ecl.Config.Cookie.Name,
+		CookieDomain:   ecl.Config.Cookie.Domain,
+		SessionType:    ecl.Config.SessionType,
+	}
+
+	ecl.Session = sess.InitSession()
+
 	ecl.Routes = ecl.routes().(*chi.Mux)
 
 	var views = jet.NewSet(
@@ -110,6 +137,7 @@ func (ecl *Eclosion) checkDotEnv(path string) error {
 func (ecl *Eclosion) startLogging() (*log.Logger, *log.Logger) {
 	var infoLog *log.Logger
 	var errorLog *log.Logger
+	log.SetPrefix("Eclosion!")
 
 	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 
