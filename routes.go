@@ -1,7 +1,6 @@
 package eclosion
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/middleware"
@@ -21,9 +20,7 @@ func (ecl *Eclosion) routes() http.Handler {
 	if ecl.Debug {
 		mux.Use(middleware.Logger)
 	}
-	mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to eclosion!")
-	})
+	mux.Use(ecl.SessionLoad)
 	return mux
 
 }
