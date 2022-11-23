@@ -20,7 +20,6 @@ func (ecl *Eclosion) routes() http.Handler {
 	if ecl.Debug {
 		mux.Use(middleware.Logger)
 	}
-	mux.Use(ecl.SessionLoad)
 	return mux
 
 }

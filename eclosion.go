@@ -8,12 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/CloudyKit/jet/v6"
-	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
-	"github.com/rohanshukla94/eclosion/render"
-	"github.com/rohanshukla94/eclosion/session"
 )
 
 const version = "1.0.0"
@@ -25,23 +21,19 @@ type Eclosion struct {
 	InfoLog                    *log.Logger
 	Config                     internalConfig
 	Routes                     *chi.Mux
-	Render                     *render.Render
-	JetViews                   *jet.Set
-	Session                    *scs.SessionManager
+	DB                         Database
 }
 
 type internalConfig struct {
-	Port             string
-	TemplateRenderer string
-	Cookie           CookieConfig
-	SessionType      string
+	Port     string
+	database databaseConfig
 }
 
 func (ecl *Eclosion) Hatch(rootPath string) error {
 
 	pathConfig := appPaths{
 		rootPath: rootPath,
-		dirNames: []string{"handlers", "migrations", "views", "models", "controllers", "public", "tmp", "logs", "middleware"},
+		dirNames: []string{"handlers", "migrations", "views", "models", "public", "tmp", "logs", "middleware"},
 	}
 
 	err := ecl.Init(pathConfig)
@@ -64,6 +56,21 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 	//create loggers
 	infoLog, errorLog := ecl.startLogging()
 
+	//connect db
+	if os.Getenv("DATABASE_TYPE") != "" {
+		db, err := ecl.InitDB(os.Getenv("DATABASE_TYPE"), ecl.BuildDSN())
+
+		if err != nil {
+			errorLog.Println(err)
+			os.Exit(1)
+		}
+
+		ecl.DB = Database{
+			DataType: os.Getenv("DATABASE_TYPE"),
+			Pool:     db,
+		}
+	}
+
 	ecl.InfoLog = infoLog
 	ecl.ErrorLog = errorLog
 	ecl.Debug, _ = strconv.ParseBool(os.Getenv("DEBUG"))
@@ -71,40 +78,15 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 	ecl.RootPath = rootPath
 
 	ecl.Config = internalConfig{
-		Port:             os.Getenv("PORT"),
-		TemplateRenderer: os.Getenv("RENDERER"),
-		Cookie: CookieConfig{
-			Name:     os.Getenv("COOKIE_NAME"),
-			Lifetime: os.Getenv("COOKIE_LIFETIME"),
-			Persist:  os.Getenv("COOKIE_PERSIST"),
-			Secure:   os.Getenv("COOKIE_SECURE"),
-			Domain:   os.Getenv("COOKIE_DOMAINs"),
+		Port: os.Getenv("PORT"),
+		database: databaseConfig{
+			database: os.Getenv("DATABASE_TYPE"),
+			dsn:      ecl.BuildDSN(),
 		},
-		SessionType: os.Getenv("SESSION_TYPE"),
 	}
-
-	//create session
-
-	sess := session.Session{
-		CookieLifetime: ecl.Config.Cookie.Lifetime,
-		CookiePersist:  ecl.Config.Cookie.Persist,
-		CookieName:     ecl.Config.Cookie.Name,
-		CookieDomain:   ecl.Config.Cookie.Domain,
-		SessionType:    ecl.Config.SessionType,
-	}
-
-	ecl.Session = sess.InitSession()
 
 	ecl.Routes = ecl.routes().(*chi.Mux)
 
-	var views = jet.NewSet(
-		jet.NewOSFileSystemLoader(fmt.Sprintf("%s/views", rootPath)),
-		jet.InDevelopmentMode(),
-	)
-
-	ecl.JetViews = views
-
-	ecl.createRenderer()
 	return nil
 }
 
@@ -156,6 +138,8 @@ func (ecl *Eclosion) ListenAndServe() {
 		WriteTimeout: 600 * time.Second,
 	}
 
+	defer ecl.DB.Pool.Close()
+
 	ecl.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
 
 	err := srv.ListenAndServe()
@@ -163,13 +147,18 @@ func (ecl *Eclosion) ListenAndServe() {
 	ecl.ErrorLog.Fatal(err)
 }
 
-func (ecl *Eclosion) createRenderer() {
-	myRender := render.Render{
-		Renderer: ecl.Config.TemplateRenderer,
-		RootPath: ecl.RootPath,
-		Port:     ecl.Config.Port,
-		JetViews: ecl.JetViews,
-	}
+func (ecl *Eclosion) BuildDSN() string {
+	var dsn string
 
-	ecl.Render = &myRender
+	switch os.Getenv("DATABASE_TYPE") {
+	case "postgres", "postgresql":
+		dsn = fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s timezone=UTC connect_timeout=5", os.Getenv("DATABASE_HOST"), os.Getenv("DATABASE_PORT"), os.Getenv("DATABASE_USER"), os.Getenv("DATABASE_NAME"), os.Getenv("DATABASE_SSL_MODE"))
+
+		if os.Getenv("DATABASE_PASS") != "" {
+			dsn = fmt.Sprintf("%s password=%s", dsn, os.Getenv("DATABASE_PASS"))
+		}
+	default:
+
+	}
+	return dsn
 }
