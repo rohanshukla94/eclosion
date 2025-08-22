@@ -35,3 +35,16 @@ func (c *Eclosion) CreateFileIfNotExists(path string) error {
 
 	return nil
 }
+
+func coalesce(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
+}
+func ternary(cond bool, a, b string) string {
+	if cond {
+		return a
+	}
+	return b
+}

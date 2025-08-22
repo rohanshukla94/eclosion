@@ -71,16 +71,16 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 	ecl.RootPath = rootPath
 
 	ecl.Config = internalConfig{
-		Port:             os.Getenv("PORT"),
-		TemplateRenderer: os.Getenv("RENDERER"),
+		Port:             coalesce(os.Getenv("PORT"), "8080"),
+		TemplateRenderer: coalesce(os.Getenv("RENDERER"), "jet"),
 		Cookie: CookieConfig{
-			Name:     os.Getenv("COOKIE_NAME"),
-			Lifetime: os.Getenv("COOKIE_LIFETIME"),
-			Persist:  os.Getenv("COOKIE_PERSIST"),
-			Secure:   os.Getenv("COOKIE_SECURE"),
-			Domain:   os.Getenv("COOKIE_DOMAINs"),
+			Name:     coalesce(os.Getenv("COOKIE_NAME"), "eclosion_session"),
+			Lifetime: coalesce(os.Getenv("COOKIE_LIFETIME"), "60"),
+			Persist:  coalesce(os.Getenv("COOKIE_PERSIST"), "false"),
+			Secure:   coalesce(os.Getenv("COOKIE_SECURE"), ternary(!ecl.Debug, "true", "false"))
+			Domain:   os.Getenv("COOKIE_DOMAIN"),
 		},
-		SessionType: os.Getenv("SESSION_TYPE"),
+		SessionType: coalesce(os.Getenv("SESSION_TYPE"), "cookie"),
 	}
 
 	//create session
@@ -91,6 +91,7 @@ func (ecl *Eclosion) Hatch(rootPath string) error {
 		CookieName:     ecl.Config.Cookie.Name,
 		CookieDomain:   ecl.Config.Cookie.Domain,
 		SessionType:    ecl.Config.SessionType,
+		CookieSecure:   ecl.Config.Cookie.Secure
 	}
 
 	ecl.Session = sess.InitSession()
@@ -148,7 +149,7 @@ func (ecl *Eclosion) startLogging() (*log.Logger, *log.Logger) {
 
 func (ecl *Eclosion) ListenAndServe() {
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")),
+		Addr:         fmt.Sprintf(":%s", ecl.Config.Port),
 		ErrorLog:     ecl.ErrorLog,
 		Handler:      ecl.Routes,
 		IdleTimeout:  30 * time.Second,
@@ -156,7 +157,7 @@ func (ecl *Eclosion) ListenAndServe() {
 		WriteTimeout: 600 * time.Second,
 	}
 
-	ecl.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
+	ecl.InfoLog.Printf("Listening on port %s", ecl.Config.Port)
 
 	err := srv.ListenAndServe()
 
