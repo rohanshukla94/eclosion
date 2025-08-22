@@ -18,7 +18,26 @@
 
 <p align="center">This is my attempt to create a web framework in Golang.
     <br> 
+    What I built: “Eclosion is a lightweight starter for Go web apps that standardizes sessions, rendering, routing, and env‑based configuration. It lets me switch between Jet and Go templates, and swap session backends (cookie/Redis/Postgres) based on environment.”
+
+    Key design choices:
+
+    Chi for composable middleware and lean router.
+
+    SCS for secure session handling with pluggable stores.
+
+    Jet for fast, expressive templating + optional fallback to stdlib.
+
+    Reliability: Centralized logging, Recoverer middleware, configurable timeouts on the server.
 </p>
+
+### Todo
+
+- [ ] finish session stores,
+- [ ] add CSRF and Static Serving
+- [ ] fixing config pitfalls
+- [ ] small simple auth feature to demo sessions and templates
+
 
 ## 📝 Table of Contents
 
@@ -91,22 +110,3 @@ Add notes about how to use the system.
 ## 🚀 Deployment <a name = "deployment"></a>
 
 Add additional notes about how to deploy this on a live system.
-
-## ⛏️ Built Using <a name = "built_using"></a>
-
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Express](https://expressjs.com/) - Server Framework
-- [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
-
-## ✍️ Authors <a name = "authors"></a>
-
-- [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
-
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
-
-## 🎉 Acknowledgements <a name = "acknowledgement"></a>
-
-- Hat tip to anyone whose code was used
-- Inspiration
-- References
